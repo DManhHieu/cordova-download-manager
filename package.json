@@ -1,0 +1,21 @@
+{
+  "name": "cordova-download-manager",
+  "version": "0.0.1",
+  "description": "",
+  "cordova": {
+    "id": "cordova-download-manager",
+    "platforms": [
+      "android",
+      "ios"
+    ]
+  },
+  "keywords": [
+    "cordova-android",
+    "cordova-ios",
+    "file",
+    "download",
+    "download-progress"
+  ],
+  "author": "hieudoanmanh.it@gmail.com",
+  "license": "Apache-2.0"
+}
