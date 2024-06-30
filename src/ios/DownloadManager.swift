@@ -16,7 +16,7 @@ import Photos
     @objc(open:)
     func open(_ command: CDVInvokedUrlCommand){
         let path = command.arguments[0] as? String ?? ""
-        print(path)
+        NSLog(path)
         let url = URL(fileURLWithPath: path)
         let documentInteractionController = UIDocumentInteractionController(url: url)
         documentInteractionController.delegate = self
