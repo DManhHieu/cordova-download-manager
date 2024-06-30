@@ -24,13 +24,7 @@ import Photos
     }
 
     func documentInteractionControllerViewControllerForPreview(_: UIDocumentInteractionController) -> UIViewController {
-        if #available(iOS 15.0, *) {
-            let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene
-            let keyWindow = scene?.keyWindow
-            return keyWindow!.rootViewController!
-        } else {
-            return UIApplication.shared.windows.first!.rootViewController!
-        }
+        return self.viewController;
     }
 
     func getURLFromString(_ str: String) -> URL? {
