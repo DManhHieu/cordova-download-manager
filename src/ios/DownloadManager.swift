@@ -215,14 +215,14 @@ import Photos
             var name = fileName
             var ext = "";
 
-            if let dotRange = fileName.range(of: "."){
-                name = String(fileName[..<dotRange.lowerBound])
-                ext = String(fileName[dotRange.upperBound...])
+             if let dotIndex = fileName.lastIndex(of: "."){
+                name = String(fileName[..<dotIndex])
+                ext = String(fileName[dotIndex...])
             }
 
             var counter = 1
             while FileManager.default.fileExists(atPath: fileURL.path) {
-                let newFilename = "\(name)(\(counter)).\(ext)"
+                let newFilename = "\(name)(\(counter))\(ext)"
                 fileURL = documentDirectory.appendingPathComponent(newFilename)
                 counter += 1
             }
