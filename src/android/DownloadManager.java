@@ -73,7 +73,10 @@ public class DownloadManager extends CordovaPlugin {
         if ("open".equals(action)) {
             String uriString = args.getString(0);
             Uri uri = Uri.parse(uriString);
-            openFileLauncher.launch(intentOpenFile(uri));
+            cordova.getThreadPool().execute(
+                    () -> openFileLauncher.launch(intentOpenFile(uri))
+            );
+
             return true;
         }
         return false;
@@ -133,8 +136,8 @@ public class DownloadManager extends CordovaPlugin {
         if (urlString != null && urlString.length() > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             try {
                 File tempFile = createTempFile(fileName);
-                int notifyId = tempFile.toPath().hashCode();
-                createNotify(tempFile.toPath().hashCode(), fileName);
+                int notifyId = Objects.hash(fileName, urlString, Instant.now());
+                createNotify(notifyId, fileName);
                 URL url = new URL(urlString);
                 URLConnection conexion = url.openConnection();
                 conexion.connect();
@@ -146,17 +149,13 @@ public class DownloadManager extends CordovaPlugin {
                     InputStream input = new BufferedInputStream(url.openStream());
                     OutputStream output = Files.newOutputStream(tempFile.toPath(), StandardOpenOption.CREATE)
                 ) {
-                    updateNotifyProgress(notifyId, fileName, lengthOfFile, total);
-                    float currentPercent = 0;
+                    Instant notifyTime = updateNotifyProgress(notifyId, fileName, lengthOfFile, total, null);
                     JSONObject progress = new JSONObject();
                     progress.put(PERCENT, 0);
                     progress.put(URL, null);
                     while ((count = input.read(data)) != -1) {
                         total += count;
-                        if (((float) total / lengthOfFile) - currentPercent > 0.025) {
-                            updateNotifyProgress(notifyId, fileName, lengthOfFile, total);
-                            currentPercent = (float) total / lengthOfFile;
-                        }
+                        notifyTime = updateNotifyProgress(notifyId, fileName, lengthOfFile, total, notifyTime);
                         progress.put(PERCENT, (float) total / lengthOfFile);
                         PluginResult result = new PluginResult(
                             PluginResult.Status.OK,
@@ -218,13 +217,18 @@ public class DownloadManager extends CordovaPlugin {
         notificationManager.notify(id, builder.build());
     }
 
-    private void updateNotifyProgress(int id, String fileName, int max, int progress) {
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(cordova.getActivity().getApplicationContext(), DOWNLOAD_CHANNEL)
-            .setSmallIcon(R.drawable.window_icon)
-            .setContentTitle(fileName)
-            .setOnlyAlertOnce(true)
-            .setProgress(max, progress, false);
-        notificationManager.notify(id, builder.build());
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private Instant updateNotifyProgress(int id, String fileName, int max, int progress, Instant notifyTime) {
+        if (notifyTime == null || notifyTime.isBefore(Instant.now().minusSeconds(1))) {
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(cordova.getActivity().getApplicationContext(), DOWNLOAD_CHANNEL)
+                    .setSmallIcon(R.drawable.window_icon)
+                    .setContentTitle(fileName)
+                    .setOnlyAlertOnce(true)
+                    .setProgress(max, progress, false);
+            notificationManager.notify(id, builder.build());
+            return Instant.now();
+        }
+        return notifyTime;
     }
 
     private void notifyCompleted(int id, Uri uri, String fileName) {
@@ -252,9 +256,16 @@ public class DownloadManager extends CordovaPlugin {
 
     private Intent intentOpenFile(Uri uri) {
         Intent intent = new Intent(Intent.ACTION_VIEW);
+        ContentResolver contentResolver = cordova.getContext().getContentResolver();
+        String mimeType = contentResolver.getType(uri);
         intent.setDataAndType(
-            uri, "*/*"
+            uri, mimeType != null ? mimeType : "*/*"
         );
+        if (intent.resolveActivity(this.cordova.getActivity().getPackageManager()) == null) {
+            intent.setDataAndType(
+                    uri, "*/*"
+            );
+        }
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         return intent;
     }
